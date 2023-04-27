@@ -12,7 +12,8 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from thop import profile
 
-from dataset import DATASET_NAMES, BipedDataset, TestDataset, dataset_info
+# from dataset import DATASET_NAMES, BipedDataset, TestDataset, dataset_info
+from cus_dataset import DATASET_NAMES, SEMDataset, TestDataset, dataset_info, ValSEMDataset
 # from loss import *
 from loss2 import *
 # from modelB6 import LDC
@@ -65,7 +66,7 @@ def train_one_epoch(epoch, dataloader, model, criterions, optimizer, device,
         if batch_id % 10 == 0:
             print(time.ctime(), 'Epoch: {0} Sample {1}/{2} Loss: {3}'
                   .format(epoch, batch_id, len(dataloader), format(loss.item(),'.4f')))
-        if batch_id % log_interval_vis == 0:
+        if batch_id % log_interval_vis == 0 and len(images) > 1:
             res_data = []
 
             img = images.cpu().numpy()
@@ -119,10 +120,10 @@ def validate_one_epoch(epoch, dataloader, model, device, output_dir, arg=None):
             image_shape = sample_batched['image_shape']
             preds = model(images)
             # print('pred shape', preds[0].shape)
-            save_image_batch_to_disk(preds[-1],
-                                     output_dir,
-                                     file_names,img_shape=image_shape,
-                                     arg=arg)
+            # save_image_batch_to_disk(preds[-1],
+            #                          output_dir,
+            #                          file_names,img_shape=image_shape,
+            #                          arg=arg)
 
 
 def test(checkpoint_path, dataloader, model, device, output_dir, args):
@@ -218,7 +219,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='LDC trainer.')
     parser.add_argument('--choose_test_data',
                         type=int,
-                        default=-1,
+                        default=0,
                         help='Choose a dataset for testing: 0 - 8')
     # ----------- test -------0--
 
@@ -226,11 +227,11 @@ def parse_args():
     TEST_DATA = DATASET_NAMES[parser.parse_args().choose_test_data] # max 8
     test_inf = dataset_info(TEST_DATA, is_linux=IS_LINUX)
     test_dir = test_inf['data_dir']
-    is_testing =True
+    is_testing =False
 
     # Training settings
     # BIPED-B2=1, BIPDE-B3=2, just for evaluation, using LDC trained with 2 or 3 bloacks
-    TRAIN_DATA = DATASET_NAMES[6] # BIPED=0, BRIND=6, MDBD=10
+    TRAIN_DATA = DATASET_NAMES[0] # BIPED=0, BRIND=6, MDBD=10
     train_inf = dataset_info(TRAIN_DATA, is_linux=IS_LINUX)
     train_dir = train_inf['data_dir']
 
@@ -250,7 +251,7 @@ def parse_args():
     parser.add_argument('--train_data',
                         type=str,
                         choices=DATASET_NAMES,
-                        default=TRAIN_DATA,
+                        default="SEM2",
                         help='Name of the dataset.')# TRAIN_DATA,BIPED-B3
     parser.add_argument('--test_data',
                         type=str,
@@ -278,15 +279,15 @@ def parse_args():
                         help='use previous trained data')  # Just for test
     parser.add_argument('--checkpoint_data',
                         type=str,
-                        default='/home/dung/DL_Project/LDC/checkpoints/SEM_pth2/49/49_model.pth',# 37 for biped 60 MDBD
+                        default='16/16_model.pth',# 37 for biped 60 MDBD
                         help='Checkpoint path.')
     parser.add_argument('--test_img_width',
                         type=int,
-                        default=1280, #test_inf['img_width']
+                        default=test_inf['img_width'],
                         help='Image width for testing.')
     parser.add_argument('--test_img_height',
                         type=int,
-                        default=960, #test_inf['img_height']
+                        default=test_inf['img_height'],
                         help='Image height for testing.')
     parser.add_argument('--res_dir',
                         type=str,
@@ -299,7 +300,7 @@ def parse_args():
 
     parser.add_argument('--epochs',
                         type=int,
-                        default=25,
+                        default=50,
                         metavar='N',
                         help='Number of training epochs (default: 25).')
     parser.add_argument('--lr', default=5e-5, type=float,
@@ -316,7 +317,7 @@ def parse_args():
                         help='version notes')
     parser.add_argument('--batch_size',
                         type=int,
-                        default=8,
+                        default=1,
                         metavar='B',
                         help='the mini-batch size (default: 8)')
     parser.add_argument('--workers',
@@ -328,11 +329,11 @@ def parse_args():
                         help='Use Tensorboard for logging.'),
     parser.add_argument('--img_width',
                         type=int,
-                        default=352,
+                        default=1280,
                         help='Image width for training.') # BIPED 352 BSDS 352/320 MDBD 480
     parser.add_argument('--img_height',
                         type=int,
-                        default=352,
+                        default=960,
                         help='Image height for training.') # BIPED 480 BSDS 352/320
     parser.add_argument('--channel_swap',
                         default=[2, 1, 0],
@@ -346,7 +347,7 @@ def parse_args():
                         type=bool,
                         help='If true crop training images, else resize images to match image width and height.')
     parser.add_argument('--mean_pixel_values',
-                        default=[103.939,116.779,123.68,137.86],
+                        default=[105.1914918,105.1914918,105.1914918],
                         type=float)  # [103.939,116.779,123.68,137.86] [104.00699, 116.66877, 122.67892]
     # BRIND mean = [104.007, 116.669, 122.679, 137.86]
     # BIPED mean_bgr processed [160.913,160.275,162.239,137.86]
@@ -388,38 +389,43 @@ def main(args):
     model = LDC().to(device)
     # model = nn.DataParallel(model)
     ini_epoch =0
+    # mode = ['train','val']
     if not args.is_testing:
+        # print(args.resume)
         if args.resume:
-            checkpoint_path2= os.path.join(args.output_dir, 'BIPED-54-B4',args.checkpoint_data)
+            
+            checkpoint_path2= os.path.join(args.output_dir, 'BIPED',args.checkpoint_data)
             ini_epoch=8
+            
             model.load_state_dict(torch.load(checkpoint_path2,
                                          map_location=device))
-        dataset_train = BipedDataset(args.input_dir,
+        dataset_train = SEMDataset(args.input_dir,
                                      img_width=args.img_width,
                                      img_height=args.img_height,
                                      mean_bgr=args.mean_pixel_values[0:3] if len(
                                          args.mean_pixel_values) == 4 else args.mean_pixel_values,
                                      train_mode='train',
-                                     arg=args
+                                     name= 'SEM'
                                      )
         dataloader_train = DataLoader(dataset_train,
                                       batch_size=args.batch_size,
                                       shuffle=True,
                                       num_workers=args.workers)
 
-    dataset_val = TestDataset(args.input_val_dir,
-                              test_data=args.test_data,
-                              img_width=args.test_img_width,
-                              img_height=args.test_img_height,
-                              mean_bgr=args.mean_pixel_values[0:3] if len(
-                                  args.mean_pixel_values) == 4 else args.mean_pixel_values,
-                              test_list=args.test_list, arg=args
-                              )
+    dataset_val = ValSEMDataset(args.input_dir,
+                                     img_width=args.img_width,
+                                     img_height=args.img_height,
+                                     mean_bgr=args.mean_pixel_values[0:3] if len(
+                                         args.mean_pixel_values) == 4 else args.mean_pixel_values,
+                                     train_mode='val',
+                                     name= 'SEM'
+                                     )
     dataloader_val = DataLoader(dataset_val,
                                 batch_size=1,
                                 shuffle=False,
                                 num_workers=args.workers)
     # Testing
+    
     if args.is_testing:
 
         output_dir = os.path.join(args.res_dir, args.train_data+"2"+ args.test_data)
@@ -458,8 +464,8 @@ def main(args):
     k=0
     set_lr = args.lrs#[25e-4, 5e-6]
     for epoch in range(ini_epoch,args.epochs):
+        # break
         if epoch%7==0:
-
             seed = seed+1000
             np.random.seed(seed)
             torch.manual_seed(seed)
@@ -479,7 +485,7 @@ def main(args):
         os.makedirs(output_dir_epoch,exist_ok=True)
         os.makedirs(img_test_dir,exist_ok=True)
 
-        avg_loss =train_one_epoch(epoch,dataloader_train,
+        avg_loss = train_one_epoch(epoch,dataloader_train,
                         model, criterion,
                         optimizer,
                         device,

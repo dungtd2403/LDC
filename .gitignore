@@ -1,0 +1,6 @@
+*.pth
+*.png
+*.JPG
+*.pyc
+*.zip
+events*

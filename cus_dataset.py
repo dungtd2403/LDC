@@ -37,7 +37,7 @@ def dataset_info(dataset_name, is_linux=True):
                 'img_width': 1280, #481
                 'train_list': 'train_pair.lst',
                 'test_list': 'test_pair.lst',
-                'data_dir': '/opt/dataset/BSDS',  # mean_rgb
+                'data_dir': '/home/dung/DL_Project/LDC/sem_data',  # mean_rgb
                 'yita': 0.5
             },
             'BSDS': {
@@ -505,26 +505,26 @@ class BipedDataset(Dataset):
             img = img[i:i + crop_size, j:j + crop_size]
             gt = gt[i:i + crop_size, j:j + crop_size]
 
-        # # for BIPED/MDBD
-        # if i_w> 420 and i_h>420: #before np.random.random() > 0.4
-        #     h,w = gt.shape
-        #     if np.random.random() > 0.4: #before i_w> 500 and i_h>500:
-        #
-        #         LR_img_size = crop_size #l BIPED=256, 240 200 # MDBD= 352 BSDS= 176
-        #         i = random.randint(0, h - LR_img_size)
-        #         j = random.randint(0, w - LR_img_size)
-        #         # if img.
-        #         img = img[i:i + LR_img_size , j:j + LR_img_size ]
-        #         gt = gt[i:i + LR_img_size , j:j + LR_img_size ]
-        #     else:
-        #         LR_img_size = 300#208  # l BIPED=208-352, # MDBD= 352-480- BSDS= 176-320
-        #         i = random.randint(0, h - LR_img_size)
-        #         j = random.randint(0, w - LR_img_size)
-        #         # if img.
-        #         img = img[i:i + LR_img_size, j:j + LR_img_size]
-        #         gt = gt[i:i + LR_img_size, j:j + LR_img_size]
-        #         img = cv2.resize(img, dsize=(crop_size, crop_size), )
-        #         gt = cv2.resize(gt, dsize=(crop_size, crop_size))
+        # for BIPED/MDBD
+        if i_w> 420 and i_h>420: #before np.random.random() > 0.4
+            h,w = gt.shape
+            if np.random.random() > 0.4: #before i_w> 500 and i_h>500:
+        
+                LR_img_size = crop_size #l BIPED=256, 240 200 # MDBD= 352 BSDS= 176
+                i = random.randint(0, h - LR_img_size)
+                j = random.randint(0, w - LR_img_size)
+                # if img.
+                img = img[i:i + LR_img_size , j:j + LR_img_size ]
+                gt = gt[i:i + LR_img_size , j:j + LR_img_size ]
+            else:
+                LR_img_size = 300#208  # l BIPED=208-352, # MDBD= 352-480- BSDS= 176-320
+                i = random.randint(0, h - LR_img_size)
+                j = random.randint(0, w - LR_img_size)
+                # if img.
+                img = img[i:i + LR_img_size, j:j + LR_img_size]
+                gt = gt[i:i + LR_img_size, j:j + LR_img_size]
+                img = cv2.resize(img, dsize=(crop_size, crop_size), )
+                gt = cv2.resize(gt, dsize=(crop_size, crop_size))
 
         else:
             # New addidings
@@ -562,7 +562,7 @@ class SEMDataset(Dataset):
                  # Whether to crop image or otherwise resize image to match image height and width.
                  crop_img=False,
                 #  arg=None
-                    name = 'SEM'
+                name = 'SEM'
                  ):
         self.data_root = data_root
         self.train_mode = train_mode
@@ -651,10 +651,10 @@ class SEMDataset(Dataset):
         gt /= 255.  # for LDC input and BDCN
 
         img = np.array(img, dtype=np.float32)
-        print(img)
-        print(self.mean_bgr)
+        # print(img)
+        # print(self.mean_bgr)
         img -= self.mean_bgr
-        print(img)
+        # print(img)
         i_h, i_w, _ = img.shape
         # print(i_h)
         # print(i_w)
@@ -668,11 +668,11 @@ class SEMDataset(Dataset):
         #     img = img[i:i + crop_size, j:j + crop_size]
         #     gt = gt[i:i + crop_size, j:j + crop_size]
 
-        # # for BIPED/MDBD
+        # for BIPED/MDBD
         # if i_w> 420 and i_h>420: #before np.random.random() > 0.4
         #     h,w = gt.shape
         #     if np.random.random() > 0.4: #before i_w> 500 and i_h>500:
-        #
+        
         #         LR_img_size = crop_size #l BIPED=256, 240 200 # MDBD= 352 BSDS= 176
         #         i = random.randint(0, h - LR_img_size)
         #         j = random.randint(0, w - LR_img_size)
@@ -690,15 +690,15 @@ class SEMDataset(Dataset):
         #         gt = cv2.resize(gt, dsize=(crop_size, crop_size))
 
         # else:
-        #     # New addidings
-        # img = cv2.resize(img, dsize=(crop_size, crop_size))
-        # gt = cv2.resize(gt, dsize=(crop_size, crop_size))
-        # # BRIND
+        # #     # New addidings
+        #     img = cv2.resize(img, dsize=(crop_size, crop_size))
+        #     gt = cv2.resize(gt, dsize=(crop_size, crop_size))
+        # # # BRIND
         # gt[gt > 0.1] +=0.2#0.4
         # gt = np.clip(gt, 0., 1.)
         # for BIPED
-        gt[gt > 0.2] += 0.6  # 0.5 for BIPED
-        gt = np.clip(gt, 0., 1.)  # BIPED
+        # gt[gt > 0.2] += 0.6  # 0.5 for BIPED
+        # gt = np.clip(gt, 0., 1.)  # BIPED
         # # for MDBD
         # gt[gt > 0.3] +=0.7#0.4
         # gt = np.clip(gt, 0., 1.)
@@ -708,16 +708,147 @@ class SEMDataset(Dataset):
         img = torch.from_numpy(img.copy()).float()
         gt = torch.from_numpy(np.array([gt])).float()
         # print(img.shape)
+        # print(gt.shape)
+        # print(img.shape)
         # print(type(img))
         # print(gt.shape)
         # print(type(gt))
         return img, gt
 
+class ValSEMDataset(Dataset):
+    # train_modes = ['train', 'test', ]
+    # dataset_types = ['rgbr', ]
+    # data_types = ['aug', ]
+
+    def __init__(self,
+                 data_root,
+                 img_height,
+                 img_width,
+                 mean_bgr,
+                 train_mode='val',
+                 dataset_type='rgbr',
+                 #  is_scaling=None,
+                 # Whether to crop image or otherwise resize image to match image height and width.
+                 crop_img=False,
+                #  arg=None,
+                name = 'SEM'
+                 ):
+        self.data_root = data_root
+        self.train_mode = train_mode
+        self.dataset_type = dataset_type
+        # self.data_type = 'aug'  # be aware that this might change in the future
+        self.img_height = img_height
+        self.img_width = img_width
+        self.mean_bgr = mean_bgr
+        self.crop_img = crop_img
+        # self.arg = arg
+        self.name = name
+        self.test_data = "SEM"
+        self.data_index = self._build_index()
+
+    def _build_index(self):
+
+        data_root = os.path.abspath(self.data_root)
+        sample_indices = []
+        if self.name.lower() == 'sem':
+            images_path = os.path.join(data_root,
+                                       'SEM_img',
+                                       self.train_mode
+                                       )
+            labels_path = os.path.join(data_root,
+                                       'SEM_converted',
+                                       self.train_mode
+                                        )
+            for file_name_ext in os.listdir(images_path):
+                file_name = os.path.splitext(file_name_ext)[0]
+                sample_indices.append(
+                    (os.path.join(images_path, file_name + '.JPG'),
+                        os.path.join(labels_path, file_name + '.png'),)
+                )
+
+        return sample_indices
+
+    def __len__(self):
+        return len(self.data_index)
+
+    def __getitem__(self, idx):
+        # get data sample
+        if self.data_index[1] is None:
+            image_path = self.data_index[0][idx] if len(self.data_index[0]) > 1 else self.data_index[0][idx - 1]
+        else:
+            image_path = self.data_index[idx][0]
+        label_path = None if self.test_data == "CLASSIC" else self.data_index[idx][1]
+        img_name = os.path.basename(image_path)
+
+        # image_path, label_path = self.data_index[idx]
+        file_name = os.path.splitext(img_name)[0] + ".png"
+        # load data
+        image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+        label = cv2.imread(label_path, cv2.IMREAD_GRAYSCALE)
+        # print(image_path)
+        # print(label_path)
+        # print(file_name)
+        im_shape = [image.shape[0], image.shape[1]]
+        image, label = self.transform(img=image, gt=label)
+        return dict(images=image, labels=label, file_names=file_name, image_shape=im_shape)
+
+    def transform(self, img, gt):
+        # gt[gt< 51] = 0 # test without gt discrimination
+        if self.test_data == "CLASSIC":
+            img_height = self.img_height
+            img_width = self.img_width
+            print(
+                f"actual size: {img.shape}, target size: {(img_height, img_width,)}")
+            # img = cv2.resize(img, (self.img_width, self.img_height))
+            img = cv2.resize(img, (img_width, img_height))
+            gt = None
+
+        # Make images and labels at least 512 by 512
+        elif img.shape[0] < 512 or img.shape[1] < 512:
+            img = cv2.resize(img, (self.img_width, self.img_width))  # 512
+            gt = cv2.resize(gt, (self.img_height, self.img_height))  # 512
+
+        # Make sure images and labels are divisible by 2^4=16
+        elif img.shape[0] % 16 != 0 or img.shape[1] % 16 != 0:
+            img_width = ((img.shape[1] // 16) + 1) * 16
+            img_height = ((img.shape[0] // 16) + 1) * 16
+            img = cv2.resize(img, (img_width, img_height))
+            gt = cv2.resize(gt, (img_width, img_height))
+        else:
+            img_width = self.img_width
+            img_height = self.img_height
+            img = cv2.resize(img, (img_width, img_height))
+            gt = cv2.resize(gt, (img_width, img_height))
+        # # For FPS
+        # img = cv2.resize(img, (496,320))
+        # if self.yita is not None:
+        #     gt[gt >= self.yita] = 1
+        img = np.array(img, dtype=np.float32)
+        # if self.rgb:
+        #     img = img[:, :, ::-1]  # RGB->BGR
+        img -= self.mean_bgr
+        img = img.transpose((2, 0, 1))
+        img = torch.from_numpy(img.copy()).float()
+
+        if self.test_data == "CLASSIC":
+            gt = np.zeros((img.shape[:2]))
+            gt = torch.from_numpy(np.array([gt])).float()
+        else:
+            gt = np.array(gt, dtype=np.float32)
+            if len(gt.shape) == 3:
+                gt = gt[:, :, 0]
+            gt /= 255.
+            gt = torch.from_numpy(np.array([gt])).float()
+        # print(img.shape)
+        # print(gt.shape)
+        return img, gt
+
+
 if __name__ == "__main__":
-    input_dir ='/home/dung/Seg_tel/LDC/sem_data'
-    img_width = 1280
-    img_height = 960
-    mean_pixel_values = [103.939,116.779,123.68,137.86]
+    input_dir ='/home/dung/DL_Project/LDC/sem_data'
+    img_width = 512
+    img_height = 512
+    mean_pixel_values = [105.1914918,105.1914918,105.1914918]
     batch_size = 16
     workers = 4
     dataset_train = SEMDataset(input_dir,
@@ -728,11 +859,19 @@ if __name__ == "__main__":
                                      train_mode='train',
                                      name = 'SEM'
                                      )
-    print(len(dataset_train))
-    dataloader_train = DataLoader(dataset_train,
+    dataset_val = ValSEMDataset(input_dir,
+                                     img_width=img_width,
+                                     img_height=img_height,
+                                     mean_bgr=mean_pixel_values[0:3] if len(
+                                         mean_pixel_values) == 4 else mean_pixel_values,
+                                     train_mode='val',
+                                     name = 'SEM'
+                                     )
+    # print(len(dataset_train))
+    dataloader_train = DataLoader(dataset_val,
                                       batch_size=batch_size,
                                       shuffle=True,
                                       num_workers=workers)
     for batch_id, sample_batched in enumerate(dataloader_train):
-        print(sample_batched)
+        print(sample_batched['images'].shape)
         break
