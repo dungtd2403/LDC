@@ -11,12 +11,13 @@ from PIL import Image, ImageDraw
 def gen_mask(images_dir, label_dir, output_dir):
     print(images_dir)
     print(label_dir)
+    val_list = ["1.json","4.json","11.json","14.json","19.json","21.json","25.json","33.json","39.json","46.json"]
     # images = sorted(glob(f"{images_dir}/*.JPG") + glob(f"{images_dir}/*.png"))
     images = sorted(glob(f"{images_dir}/*.JPG") + glob(f"{images_dir}/*.png"))
     labels = sorted(glob(f"{label_dir}/*.json"))
     print(labels)
 
-    assert images and labels and len(images) == len(labels)
+    # assert images and labels and len(images) == len(labels)
 
     if not path.exists(output_dir):
         os.mkdir(output_dir)
@@ -40,6 +41,6 @@ def gen_mask(images_dir, label_dir, output_dir):
 if __name__ == "__main__":
     gen_mask(
         images_dir='/home/dung/Seg_tel/LDC/sem_data/SEM_img',
-        label_dir='/home/dung/Seg_tel/LDC/sem_data/SEM_label',
-        output_dir='/home/dung/Seg_tel/LDC/sem_data/SEM_converted'
+        label_dir='/home/dung/dataset/SEM_TEL/SEM_100/SEM_label',
+        output_dir='/home/dung/Project/LDC/sem_data/SEM_mask'
     )
