@@ -63,7 +63,7 @@ def train_one_epoch(epoch, dataloader, model, criterions, optimizer, device,
             tmp_loss = np.array(loss_avg).mean()
             tb_writer.add_scalar('loss', tmp_loss,epoch)
 
-        if batch_id % 10 == 0:
+        if batch_id % 8 == 0:
             print(time.ctime(), 'Epoch: {0} Sample {1}/{2} Loss: {3}'
                   .format(epoch, batch_id, len(dataloader), format(loss.item(),'.4f')))
         if batch_id % log_interval_vis == 0 and len(images) > 1:
@@ -106,26 +106,41 @@ def train_one_epoch(epoch, dataloader, model, criterions, optimizer, device,
     loss_avg = np.array(loss_avg).mean()
     return loss_avg
 
-def validate_one_epoch(epoch, dataloader, model, device, output_dir, arg=None):
+def validate_one_epoch(epoch, dataloader, model,criterions, device, output_dir,tb_writer, arg=None):
     # XXX This is not really validation, but testing
-
+    if isinstance(criterions, list):
+        criterion1, criterion2 = criterions
+    else:
+        criterion1 = criterions
     # Put model in eval mode
     model.eval()
-
+    l_weight = [[0.05, 2.], [0.05, 2.], [0.05, 2.],
+                [0.1, 1.], [0.1, 1.], [0.1, 1.],
+                [0.01, 4.]] 
+    loss_avg=[]
     with torch.no_grad():
-        for _, sample_batched in enumerate(dataloader):
+        for batch_id, sample_batched in enumerate(dataloader):
             images = sample_batched['images'].to(device)
-            # labels = sample_batched['labels'].to(device)
+            labels = sample_batched['labels'].to(device)
             file_names = sample_batched['file_names']
+            
             image_shape = sample_batched['image_shape']
-            preds = model(images)
+            preds_list = model(images)
+            loss = sum([criterion1(preds, labels, l_w, device) for preds, l_w in zip(preds_list, l_weight)])
             # print('pred shape', preds[0].shape)
             # save_image_batch_to_disk(preds[-1],
             #                          output_dir,
             #                          file_names,img_shape=image_shape,
             #                          arg=arg)
-
-
+            loss_avg.append(loss.item())
+            if epoch==0 and batch_id ==2 and (tb_writer is not None):
+                tmp_loss_val = np.array(loss_avg).mean()
+                tb_writer.add_scalar('val_loss', tmp_loss_val,epoch)
+            if batch_id % 8 == 0:
+                print(time.ctime(), 'VAL_Epoch: {0} Sample {1}/{2} VAL_Loss: {3}'
+                    .format(epoch, batch_id, len(dataloader), format(loss.item(),'.4f')))
+    loss_avg = np.array(loss_avg).mean()
+    return loss_avg
 def test(checkpoint_path, dataloader, model, device, output_dir, args):
     if not os.path.isfile(checkpoint_path):
         raise FileNotFoundError(
@@ -233,8 +248,17 @@ def parse_args():
     # BIPED-B2=1, BIPDE-B3=2, just for evaluation, using LDC trained with 2 or 3 bloacks
     TRAIN_DATA = DATASET_NAMES[0] # BIPED=0, BRIND=6, MDBD=10
     train_inf = dataset_info(TRAIN_DATA, is_linux=IS_LINUX)
-    train_dir = train_inf['data_dir']
+    train_dir = '/home/dung/Project/LDC/sem_data'
+    epoch = 80
+    batch_size = 8
+    img_width = 720
+    img_height = 544
+    dataset_name = f"B{batch_size}_{img_height}_{img_width}_new_label"
+    output_dir ='checkpoints_0805'
+    mean_px=  [101.88181293, 101.88181293, 101.88181293] # stage 1
+    # mean_px= [239.65250941, 239.65250941, 239.65250941] # stage 2
 
+    
     # Data parameters
     parser.add_argument('--input_dir',
                         type=str,
@@ -246,18 +270,19 @@ def parse_args():
                         help='the path to the directory with the input data for validation.')
     parser.add_argument('--output_dir',
                         type=str,
-                        default='checkpoints',
+                        default= output_dir,
                         help='the path to output the results.')
     parser.add_argument('--train_data',
                         type=str,
                         choices=DATASET_NAMES,
-                        default="SEM2",
+                        default=dataset_name,    ############## DATASET NAME ########
                         help='Name of the dataset.')# TRAIN_DATA,BIPED-B3
     parser.add_argument('--test_data',
                         type=str,
                         choices=DATASET_NAMES,
                         default=TEST_DATA,
                         help='Name of the dataset.')
+    
     parser.add_argument('--test_list',
                         type=str,
                         default=test_inf['test_list'],
@@ -279,45 +304,54 @@ def parse_args():
                         help='use previous trained data')  # Just for test
     parser.add_argument('--checkpoint_data',
                         type=str,
-                        default='16/16_model.pth',# 37 for biped 60 MDBD
+                        default='11/11_model.pth',# 37 for biped 60 MDBD
                         help='Checkpoint path.')
+    
     parser.add_argument('--test_img_width',
                         type=int,
                         default=test_inf['img_width'],
                         help='Image width for testing.')
+    
     parser.add_argument('--test_img_height',
                         type=int,
                         default=test_inf['img_height'],
                         help='Image height for testing.')
+    
     parser.add_argument('--res_dir',
                         type=str,
                         default='result',
                         help='Result directory')
+    
     parser.add_argument('--log_interval_vis',
                         type=int,
                         default=100,
                         help='The NO B to wait before printing test predictions. 200')
 
-    parser.add_argument('--epochs',
-                        type=int,
-                        default=50,
+    parser.add_argument('--epochs',   ####### epoch 
+                        type=int,  
+                        default=epoch,
                         metavar='N',
                         help='Number of training epochs (default: 25).')
+    
     parser.add_argument('--lr', default=5e-5, type=float,
                         help='Initial learning rate. =5e-5')
-    parser.add_argument('--lrs', default=[25e-4,5e-4,1e-5], type=float,
+    
+    parser.add_argument('--lrs', default=[25e-4,20e-4,10e-4,5e-4,1e-5], type=float,
                         help='LR for set epochs')
+    
     parser.add_argument('--wd', type=float, default=0., metavar='WD',
                         help='weight decay (Good 5e-6)')
-    parser.add_argument('--adjust_lr', default=[6,12,18], type=int,
+    
+    parser.add_argument('--adjust_lr', default=[6,12,18,30,50], type=int,
                         help='Learning rate step size.')  # [6,9,19]
+    
     parser.add_argument('--version_notes',
                         default='LDC-BIPED: B4 Exp 67L3 xavier init normal+ init normal CatsLoss2 Cofusion',
                         type=str,
                         help='version notes')
-    parser.add_argument('--batch_size',
+    parser.add_argument('--batch_size', ####### BATCH Size #####
                         type=int,
-                        default=1,
+                        default=batch_size,
                         metavar='B',
                         help='the mini-batch size (default: 8)')
     parser.add_argument('--workers',
@@ -329,11 +363,11 @@ def parse_args():
                         help='Use Tensorboard for logging.'),
     parser.add_argument('--img_width',
                         type=int,
-                        default=1280,
+                        default=img_width,
                         help='Image width for training.') # BIPED 352 BSDS 352/320 MDBD 480
     parser.add_argument('--img_height',
                         type=int,
-                        default=960,
+                        default=img_height,
                         help='Image height for training.') # BIPED 480 BSDS 352/320
     parser.add_argument('--channel_swap',
                         default=[2, 1, 0],
@@ -347,7 +381,7 @@ def parse_args():
                         type=bool,
                         help='If true crop training images, else resize images to match image width and height.')
     parser.add_argument('--mean_pixel_values',
-                        default=[105.1914918,105.1914918,105.1914918],
+                        default=mean_px,
                         type=float)  # [103.939,116.779,123.68,137.86] [104.00699, 116.66877, 122.67892]
     # BRIND mean = [104.007, 116.669, 122.679, 137.86]
     # BIPED mean_bgr processed [160.913,160.275,162.239,137.86]
@@ -391,10 +425,10 @@ def main(args):
     ini_epoch =0
     # mode = ['train','val']
     if not args.is_testing:
-        # print(args.resume)
+        print('---------USE PRETRAINED---------',args.resume)
         if args.resume:
             
-            checkpoint_path2= os.path.join(args.output_dir, 'BIPED',args.checkpoint_data)
+            checkpoint_path2= os.path.join(args.output_dir, 'BRIND',args.checkpoint_data)
             ini_epoch=8
             
             model.load_state_dict(torch.load(checkpoint_path2,
@@ -428,7 +462,8 @@ def main(args):
     
     if args.is_testing:
 
-        output_dir = os.path.join(args.res_dir, args.train_data+"2"+ args.test_data)
+        # output_dir = os.path.join(args.res_dir, args.train_data + args.test_data)
+        output_dir = os.path.join(args.res_dir, args.train_data)
         print(f"output_dir: {output_dir}")
         if args.double_img:
             # run twice the same image changing the image's channels
@@ -492,11 +527,12 @@ def main(args):
                         args.log_interval_vis,
                         tb_writer=tb_writer,
                         args=args)
-        validate_one_epoch(epoch,
+        avg_loss_val = validate_one_epoch(epoch,
                            dataloader_val,
-                           model,
+                           model,criterion,
                            device,
                            img_test_dir,
+                           tb_writer=tb_writer,
                            arg=args)
 
         # Save model after end of every epoch
@@ -505,6 +541,9 @@ def main(args):
         if tb_writer is not None:
             tb_writer.add_scalar('loss',
                                  avg_loss,
+                                 epoch+1)
+            tb_writer.add_scalar('val_loss',
+                                 avg_loss_val,
                                  epoch+1)
         print('Last learning rate> ', optimizer.param_groups[0]['lr'])
 
