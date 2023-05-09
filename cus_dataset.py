@@ -33,11 +33,11 @@ def dataset_info(dataset_name, is_linux=True):
 
         config = {
             'SEM': {
-                'img_height': 960, #321
-                'img_width': 1280, #481
+                'img_height': 240, #321
+                'img_width': 320, #481
                 'train_list': 'train_pair.lst',
                 'test_list': 'test_pair.lst',
-                'data_dir': '/home/dung/DL_Project/LDC/sem_data',  # mean_rgb
+                'data_dir': '/home/dung/Project/LDC/sem_data',  # mean_rgb
                 'yita': 0.5
             },
             'BSDS': {
@@ -531,11 +531,11 @@ class BipedDataset(Dataset):
             img = cv2.resize(img, dsize=(crop_size, crop_size))
             gt = cv2.resize(gt, dsize=(crop_size, crop_size))
         # # BRIND
-        # gt[gt > 0.1] +=0.2#0.4
-        # gt = np.clip(gt, 0., 1.)
+        gt[gt > 0.1] +=0.2#0.4
+        gt = np.clip(gt, 0., 1.)
         # for BIPED
-        gt[gt > 0.2] += 0.6  # 0.5 for BIPED
-        gt = np.clip(gt, 0., 1.)  # BIPED
+        # gt[gt > 0.2] += 0.6  # 0.5 for BIPED
+        # gt = np.clip(gt, 0., 1.)  # BIPED
         # # for MDBD
         # gt[gt > 0.3] +=0.7#0.4
         # gt = np.clip(gt, 0., 1.)
@@ -591,7 +591,7 @@ class SEMDataset(Dataset):
                                        self.train_mode
                                        )
             labels_path = os.path.join(data_root,
-                                       'SEM_converted',
+                                       'SEM_mask',
                                        self.train_mode
                                         )
 
@@ -601,6 +601,7 @@ class SEMDataset(Dataset):
                 file_name = os.path.splitext(file_name_ext)[0]
                 sample_indices.append(
                     (os.path.join(images_path, file_name + '.JPG'),
+                    #  (os.path.join(images_path, file_name + '.png'),
                         os.path.join(labels_path, file_name + '.png'),)
                 )
         # else:
@@ -659,14 +660,16 @@ class SEMDataset(Dataset):
         # print(i_h)
         # print(i_w)
         #  400 for BIPEd and 352 for BSDS check with 384
-        # crop_size = self.img_height if self.img_height == self.img_width else None  # 448# MDBD=480 BIPED=480/400 BSDS=352
+        # crop_size = self.img_height if self.img_height == self.img_width else None # 448# MDBD=480 BIPED=480/400 BSDS=352 
+        crop_size_w = self.img_width 
+        crop_size_h = self.img_height
         # print(crop_size)
         # for BSDS 352/BRIND
-        # if i_w > crop_size and i_h > crop_size:  # later 400, before crop_size
-        #     i = random.randint(0, i_h - crop_size)
-        #     j = random.randint(0, i_w - crop_size)
-        #     img = img[i:i + crop_size, j:j + crop_size]
-        #     gt = gt[i:i + crop_size, j:j + crop_size]
+        if i_w > crop_size_w and i_h > crop_size_h:  # later 400, before crop_size
+            i = random.randint(0, i_h - crop_size_h)
+            j = random.randint(0, i_w - crop_size_w)
+            img = img[i:i + crop_size_h, j:j + crop_size_w]
+            gt = gt[i:i + crop_size_h, j:j + crop_size_w]
 
         # for BIPED/MDBD
         # if i_w> 420 and i_h>420: #before np.random.random() > 0.4
@@ -689,10 +692,10 @@ class SEMDataset(Dataset):
         #         img = cv2.resize(img, dsize=(crop_size, crop_size), )
         #         gt = cv2.resize(gt, dsize=(crop_size, crop_size))
 
-        # else:
-        # #     # New addidings
-        #     img = cv2.resize(img, dsize=(crop_size, crop_size))
-        #     gt = cv2.resize(gt, dsize=(crop_size, crop_size))
+        else:
+        #     # New addidings
+            img = cv2.resize(img, dsize=(crop_size_h, crop_size_w))
+            gt = cv2.resize(gt, dsize=(crop_size_h,  crop_size_w))
         # # # BRIND
         # gt[gt > 0.1] +=0.2#0.4
         # gt = np.clip(gt, 0., 1.)
@@ -756,13 +759,14 @@ class ValSEMDataset(Dataset):
                                        self.train_mode
                                        )
             labels_path = os.path.join(data_root,
-                                       'SEM_converted',
+                                       'SEM_mask',
                                        self.train_mode
                                         )
             for file_name_ext in os.listdir(images_path):
                 file_name = os.path.splitext(file_name_ext)[0]
                 sample_indices.append(
-                    (os.path.join(images_path, file_name + '.JPG'),
+                    (os.path.join(images_path, file_name + '.JPG'), # stage 1
+                    # (os.path.join(images_path, file_name + '.png'),
                         os.path.join(labels_path, file_name + '.png'),)
                 )
 
