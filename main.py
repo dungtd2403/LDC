@@ -158,6 +158,8 @@ def test(checkpoint_path, dataloader, model, device, output_dir, args):
             if device.type == 'cuda':
                 torch.cuda.synchronize()
             preds = model(images)
+            # print(preds)
+            # break
             if device.type == 'cuda':
                 torch.cuda.synchronize()
             tmp_duration = time.perf_counter() - end
@@ -168,6 +170,7 @@ def test(checkpoint_path, dataloader, model, device, output_dir, args):
                                      image_shape,
                                      arg=args)
             torch.cuda.empty_cache()
+            
     total_duration = np.sum(np.array(total_duration))
     print("******** Testing finished in", args.test_data, "dataset. *****")
     print("FPS: %f.4" % (len(dataloader)/total_duration))
@@ -233,7 +236,19 @@ def parse_args():
     TRAIN_DATA = DATASET_NAMES[6] # BIPED=0, BRIND=6, MDBD=10
     train_inf = dataset_info(TRAIN_DATA, is_linux=IS_LINUX)
     train_dir = train_inf['data_dir']
-
+    # default value
+    epoch = 80
+    batch_size = 8
+    img_width = 960
+    img_height = 720
+    model = 60
+    dataset_name = f"B{batch_size}_{img_height}_{img_width}_m{model}"
+    # res_dir = 'result_stage2/check_0805'
+    res_dir = 'result_stage1/check_0805'
+    # weight_cp = f'/home/dung/Project/LDC/checkpoints_stage2_0805/B{batch_size}_{img_height}_{img_width}_stage2_fix_mean/{model}/{model}_model.pth'
+    weight_cp = '/home/dung/Project/LDC/checkpoints_0805/B8_720_960_new_label/60/60_model.pth'
+    mean_px=  [101.88181293, 101.88181293, 101.88181293] # stage 1
+    # mean_px =[239.65250941, 239.65250941, 239.65250941] # Stage2
     # Data parameters
     parser.add_argument('--input_dir',
                         type=str,
@@ -250,7 +265,7 @@ def parse_args():
     parser.add_argument('--train_data',
                         type=str,
                         choices=DATASET_NAMES,
-                        default=TRAIN_DATA,
+                        default=dataset_name, ################# Result folder ######################
                         help='Name of the dataset.')# TRAIN_DATA,BIPED-B3
     parser.add_argument('--test_data',
                         type=str,
@@ -278,7 +293,7 @@ def parse_args():
                         help='use previous trained data')  # Just for test
     parser.add_argument('--checkpoint_data',
                         type=str,
-                        default='/home/dung/DL_Project/LDC/checkpoints/SEM_pth2/49/49_model.pth',# 37 for biped 60 MDBD
+                        default= weight_cp,# 37 for biped 60 MDBD
                         help='Checkpoint path.')
     parser.add_argument('--test_img_width',
                         type=int,
@@ -290,7 +305,7 @@ def parse_args():
                         help='Image height for testing.')
     parser.add_argument('--res_dir',
                         type=str,
-                        default='result',
+                        default=res_dir,
                         help='Result directory')
     parser.add_argument('--log_interval_vis',
                         type=int,
@@ -346,7 +361,7 @@ def parse_args():
                         type=bool,
                         help='If true crop training images, else resize images to match image width and height.')
     parser.add_argument('--mean_pixel_values',
-                        default=[103.939,116.779,123.68,137.86],
+                        default=mean_px,
                         type=float)  # [103.939,116.779,123.68,137.86] [104.00699, 116.66877, 122.67892]
     # BRIND mean = [104.007, 116.669, 122.679, 137.86]
     # BIPED mean_bgr processed [160.913,160.275,162.239,137.86]
@@ -422,7 +437,7 @@ def main(args):
     # Testing
     if args.is_testing:
 
-        output_dir = os.path.join(args.res_dir, args.train_data+"2"+ args.test_data)
+        output_dir = os.path.join(args.res_dir, args.train_data)
         print(f"output_dir: {output_dir}")
         if args.double_img:
             # run twice the same image changing the image's channels
